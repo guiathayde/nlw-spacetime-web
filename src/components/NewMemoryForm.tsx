@@ -9,7 +9,20 @@ import { api } from "@/lib/api";
 
 import { MediaPicker } from "./MediaPicker";
 
-export function NewMemoryForm() {
+interface Memory {
+  id: string;
+  coverUrl: string;
+  coverType: string;
+  content: string;
+  isPublic: boolean;
+  createdAt: string;
+}
+
+interface NewMemoryFormProps {
+  memory?: Memory;
+}
+
+export function NewMemoryForm({ memory }: NewMemoryFormProps) {
   const router = useRouter();
 
   async function handleCreateMemory(event: FormEvent<HTMLFormElement>) {
@@ -20,7 +33,11 @@ export function NewMemoryForm() {
     const fileToUpload = formData.get("coverUrl") as File;
 
     let coverUrl = "";
+    let coverType = "";
     if (fileToUpload) {
+      const fileName = fileToUpload.name;
+      coverType = fileName.slice(((fileName.lastIndexOf(".") - 1) >>> 0) + 2);
+
       const uploadFormData = new FormData();
       uploadFormData.set("file", fileToUpload);
 
@@ -35,6 +52,7 @@ export function NewMemoryForm() {
       "/memories",
       {
         coverUrl,
+        coverType,
         content: formData.get("content"),
         isPublic: formData.get("isPublic") === "true",
       },
@@ -48,8 +66,59 @@ export function NewMemoryForm() {
     router.push("/");
   }
 
+  async function handleEditMemory(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!memory) {
+      alert("Erro ao editar memória. Tente novamente.");
+      return;
+    }
+
+    const formData = new FormData(event.currentTarget);
+
+    const fileToUpload = formData.get("coverUrl") as File;
+
+    let coverUrl = "";
+    let coverType = "";
+    if (fileToUpload && fileToUpload.name.length > 0 && fileToUpload.size > 0) {
+      const fileName = fileToUpload.name;
+      coverType = fileName.slice(((fileName.lastIndexOf(".") - 1) >>> 0) + 2);
+
+      const uploadFormData = new FormData();
+      uploadFormData.set("file", fileToUpload);
+
+      const uploadResponse = await api.post("/upload", uploadFormData);
+
+      coverUrl = uploadResponse.data.fileUrl;
+    }
+
+    const token = Cookie.get("token");
+
+    await api.put(
+      `/memories/${memory.id}`,
+      {
+        coverUrl: coverUrl.length > 0 ? coverUrl : memory.coverUrl,
+        coverType: coverType.length > 0 ? coverType : memory.coverType,
+        content: formData.get("content"),
+        isPublic: formData.get("isPublic") === "true",
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    router.push("/");
+  }
+
+  const isPublic = memory ? memory.isPublic : true;
+
   return (
-    <form onSubmit={handleCreateMemory} className="flex flex-1 flex-col gap-2">
+    <form
+      onSubmit={memory ? handleEditMemory : handleCreateMemory}
+      className="flex flex-1 flex-col gap-2"
+    >
       <div className="flex items-center gap-4">
         <label
           htmlFor="media"
@@ -67,20 +136,21 @@ export function NewMemoryForm() {
             type="checkbox"
             name="isPublic"
             id="isPublic"
-            value="true"
+            value={isPublic ? "true" : "false"}
             className="h-4 w-4 rounded border-gray-400 bg-gray-700 text-purple-500"
           />
           Tornar memória pública
         </label>
       </div>
 
-      <MediaPicker />
+      <MediaPicker memory={memory} />
 
       <textarea
         name="content"
         spellCheck={false}
         className="w-full flex-1 resize-none rounded border-0 bg-transparent p-0 text-lg leading-relaxed text-gray-100 placeholder:text-gray-400 focus:ring-0"
         placeholder="Fique livre para adicionar fotos, vídeos e relatos sobre essa experiência que você quer lembrar para sempre."
+        defaultValue={memory ? memory.content : ""}
       ></textarea>
 
       <button

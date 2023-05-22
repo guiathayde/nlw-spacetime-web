@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, ChangeEvent } from "react";
-// import Image from "next/image";
+
+import { isImage, isVideo } from "@/utils/mediaTypes";
 
 interface Preview {
   url: string;
@@ -9,11 +10,28 @@ interface Preview {
   extension: string;
 }
 
-const isImage = ["gif", "jpg", "jpeg", "png"];
-const isVideo = ["mpg", "mp2", "mpeg", "mpe", "mpv", "mp4"];
+interface Memory {
+  id: string;
+  coverUrl: string;
+  coverType: string;
+}
 
-export function MediaPicker() {
-  const [preview, setPreview] = useState<Preview | null>(null);
+interface MediaPickerProps {
+  memory?: Memory;
+}
+
+export function MediaPicker({ memory }: MediaPickerProps) {
+  const [preview, setPreview] = useState<Preview | null>(() => {
+    if (memory) {
+      return {
+        url: memory.coverUrl,
+        fileName: memory.id,
+        extension: memory.coverType,
+      };
+    }
+
+    return null;
+  });
 
   function onFileSelected(event: ChangeEvent<HTMLInputElement>) {
     const { files } = event.target;
@@ -26,8 +44,6 @@ export function MediaPicker() {
     const extension = fileName.slice(
       ((fileName.lastIndexOf(".") - 1) >>> 0) + 2
     );
-
-    console.log(extension);
 
     setPreview({
       url: previewURL,
