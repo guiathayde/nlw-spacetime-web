@@ -2,6 +2,8 @@
 const nextConfig = {
   images: {
     domains: [
+      "spacetime.guiathayde.dev",
+      "servermine.org",
       "avatars.githubusercontent.com",
       "github.com",
       "localhost",
